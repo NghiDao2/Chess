@@ -1,0 +1,62 @@
+from game_simulator import GameSimulator
+import threading
+import queue
+
+def game_worker(sim):
+    while True:
+        game = None
+
+        with sim.lock:
+            while sim.queue.empty() and not sim.thread_exit:
+                sim.added.wait()
+            if thread_exit:
+                return 
+            game = sim.queue.get()
+
+        game.run()
+
+        with sim.lock:
+            sim.finished.notify_all()
+
+
+class SimulationBatch():
+
+    def __init__(self, num_threads=4):
+        
+        self.thread_exit = False
+        self.queue = queue.Queue()
+        self.lock = threading.Lock()
+        self.added = threading.Condition(lock)
+        self.finished = threading.Condition(lock)
+
+        
+        self.threads = [
+            threading.Thread(target=game_worker, args=(self,)) for i in range(NUM_THREADS)
+        ]
+
+        for thread in self.threads:
+            thread.start()
+
+
+    def add_game(white_bot, black_bot, move_time=300, move_limit=200):
+        with self.lock:
+            game = GameSimulator(white_bot, black_bot, move_time=move_time, move_limit=200)
+            self.queue.put(game)
+            self.added.notify()
+            return game
+
+    def get_queue_size():
+        with self.lock:
+            return self.queue.qsize()
+
+    def wait_finish():
+        with lock:
+            self.finished.wait()
+
+    def exit():
+        with lock:
+            self.thread_exit = True
+            self.added.notify_all()
+
+            for thread in self.threads:
+                thread.join()

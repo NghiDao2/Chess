@@ -1,0 +1,7 @@
+# Ignore specific folders
+/src/libtorch/
+/simulations/
+
+# Ignore specific file types
+*.o
+*.so
