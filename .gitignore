@@ -4,6 +4,8 @@
 /trash/
 /white_moves.py
 /white_moves.txt
+/.vscode/
+/__pycache__
 
 # Ignore specific file types
 *.o
