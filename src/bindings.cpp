@@ -5,7 +5,6 @@
 #include "board.h"
 #include "timer.h"
 #include "monte_carlo.h"
-#include <torch/torch.h>
 
 
 void thread_function(TorchModel& model, int thread_id) {
