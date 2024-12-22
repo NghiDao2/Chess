@@ -3,7 +3,7 @@ CXX = g++
 CXXFLAGS = -shared -fPIC -std=c++17 -O2 -g 
 PYBIND11_CFLAGS := $(shell python3 -m pybind11 --includes)  # Fetch pybind11 flags
 PYTHON_CFLAGS := $(shell python3-config --includes)
-INCLUDES = -I./src/surge/src -I./src/evaluation $(PYBIND11_CFLAGS) $(PYTHON_CFLAGS) -I/usr/include/python3.10
+INCLUDES = -I./src/position -I./src/evaluation $(PYBIND11_CFLAGS) $(PYTHON_CFLAGS) -I/usr/include/python3.10
 
 # Default to CPU-only compilation
 DEFAULT_LIBS =
@@ -11,7 +11,7 @@ DEFAULT_DEFINES =
 DEFAULT_LDFLAGS =
 
 # Source Files
-SRCS := $(wildcard src/*.cpp src/surge/src/*.cpp src/evaluation/*.cpp)
+SRCS := $(wildcard src/*.cpp src/position/*.cpp src/evaluation/*.cpp)
 OBJS := $(SRCS:.cpp=.o)
 
 # Output Python Module
@@ -48,7 +48,7 @@ $(TARGET): $(OBJS)
 src/%.o: src/%.cpp
 	$(CXX) $(CXXFLAGS) $(DEFINES) $(INCLUDES) -c $< -o $@
 
-src/surge/src/%.o: src/surge/src/%.cpp
+src/position/%.o: src/position/%.cpp
 	$(CXX) $(CXXFLAGS) $(DEFINES) $(INCLUDES) -c $< -o $@
 
 src/evaluation/%.o: src/evaluation/%.cpp

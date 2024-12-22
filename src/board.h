@@ -1,9 +1,9 @@
 #ifndef BOARD_H
 #define BOARD_H
 
-#include "surge/src/position.h" 
-#include "surge/src/tables.h"
-#include "surge/src/types.h"
+#include "position/position.h" 
+#include "position/tables.h"
+#include "position/types.h"
 #include <cstdint> 
 #include <vector> 
 

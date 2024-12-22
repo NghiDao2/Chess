@@ -1,7 +1,7 @@
 #ifndef SPACE_H
 #define SPACE_H
 
-#include "../surge/src/position.h"
+#include "../position/position.h"
 #include "pawns.h"
 
 const Bitboard space_mask[2] = {

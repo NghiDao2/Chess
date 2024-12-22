@@ -2,7 +2,7 @@
 #define PIECES_H
 
 #include "pawns.h"
-#include "../surge/src/position.h"
+#include "../position/position.h"
 
 template<Color C>
 inline Bitboard pieces_outpost_mask(Bitboard pawn_span[2], Bitboard pawn_attack[2]) {

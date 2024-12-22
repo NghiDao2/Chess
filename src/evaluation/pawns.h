@@ -1,7 +1,7 @@
 #ifndef PAWNS_H
 #define PAWNS_H
 
-#include "../surge/src/position.h"
+#include "../position/position.h"
 
 inline const Bitboard isolated_mask[8] = {
     MASK_FILE[1], 
