@@ -8,7 +8,7 @@
 class Evaluation {
 
 public:
-    Evaluation(Position* position) {
+    Evaluation(const Position* position) {
         pos = position;
 
         pawn_attack[WHITE] = pawn_attacks_mask<WHITE>(pos);
@@ -79,7 +79,7 @@ public:
     int eval;
 
 private:
-    Position* pos;
+    const Position* pos;
 
     Bitboard pawn_isolated[2];
     Bitboard pawn_double_isolated[2];

@@ -1,6 +1,9 @@
 # Ignore specific folders
 /src/libtorch/
 /simulations/
+/trash/
+/white_moves.py
+/white_moves.txt
 
 # Ignore specific file types
 *.o

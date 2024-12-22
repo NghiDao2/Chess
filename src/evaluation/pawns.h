@@ -16,7 +16,7 @@ inline const Bitboard isolated_mask[8] = {
 
 
 template<Color Us>
-inline Bitboard isolated_pawn_mask(Position* pos) {
+inline Bitboard isolated_pawn_mask(const Position* pos) {
     Bitboard pawn = pos->bitboard_of(Us, PAWN);
     
     Bitboard b = 0;
@@ -44,25 +44,25 @@ inline Bitboard extend(Bitboard bitboard, int length) {
 }
 
 template<Color Us>
-inline Bitboard stacked_pawn_mask(Position* pos) { // multiple pawns on the same file
+inline Bitboard stacked_pawn_mask(const Position* pos) { // multiple pawns on the same file
         
     Bitboard pawn = pos->bitboard_of(Us, PAWN);
     return pawn & extend<relative_dir<Us>(NORTH)>(pawn, 6);
 }
 
 template<Color Us>
-inline Bitboard doubled_pawn_mask(Position* pos) {
+inline Bitboard doubled_pawn_mask(const Position* pos) {
     Bitboard pawn = pos->bitboard_of(Us, PAWN);
     return pawn & shift<relative_dir<Us>(NORTH)>(pawn);
 }
 
 template<Color Us>
-inline Bitboard doubled_isolated_pawn_mask(Position* pos, Bitboard pawn_isolated[2]) {
+inline Bitboard doubled_isolated_pawn_mask(const Position* pos, Bitboard pawn_isolated[2]) {
     return pawn_isolated[Us] & stacked_pawn_mask<Us>(pos) & extend<relative_dir<Us>(SOUTH)>(pawn_isolated[~Us], 6);
 }
 
 template<Color Us>
-inline Bitboard pawn_attacks_mask(Position* pos) {
+inline Bitboard pawn_attacks_mask(const Position* pos) {
     Bitboard pawn = pos->bitboard_of(Us, PAWN);
 
     return shift<relative_dir<Us>(NORTH_WEST)>(pawn)
@@ -70,7 +70,7 @@ inline Bitboard pawn_attacks_mask(Position* pos) {
 }
 
 template<Color Us>
-inline Bitboard backward_pawn_mask(Position* pos, Bitboard pawn_span[2], Bitboard pawn_attack[2]) {
+inline Bitboard backward_pawn_mask(const Position* pos, Bitboard pawn_span[2], Bitboard pawn_attack[2]) {
 
     Bitboard our_pawn = pos->bitboard_of(Us, PAWN);
     Bitboard their_pawn = pos->bitboard_of(Us, PAWN);
@@ -79,32 +79,32 @@ inline Bitboard backward_pawn_mask(Position* pos, Bitboard pawn_span[2], Bitboar
 }
 
 template<Color Us>
-inline Bitboard supported_pawn_mask(Position* pos) { // a pawn is supported if there is a pawn in adjancent or diagonally below
+inline Bitboard supported_pawn_mask(const Position* pos) { // a pawn is supported if there is a pawn in adjancent or diagonally below
     return (pawn_attacks_mask<Us>(pos) & pos->bitboard_of(Us, PAWN));
 }
 
 
 
 template<Color Us>
-inline Bitboard phalanx_pawn_mask(Position* pos) {
+inline Bitboard phalanx_pawn_mask(const Position* pos) {
     Bitboard pawn = pos->bitboard_of(Us, PAWN);
     return pawn & (shift<WEST>(pawn) | shift<EAST>(pawn));
 }
 
 template<Color Us>
-inline Bitboard blocked_pawn_mask(Position* pos) {
+inline Bitboard blocked_pawn_mask(const Position* pos) {
     return (pos->bitboard_of(Us, PAWN) 
     & (MASK_RANK[relative_rank<Us>(RANK5)] | MASK_RANK[relative_rank<Us>(RANK6)]) 
     & shift<relative_dir<Us>(SOUTH)>(pos->bitboard_of(~Us, PAWN)));
 }
 
 template<Color Us>
-inline Bitboard opposed_pawn_mask(Position* pos) {
+inline Bitboard opposed_pawn_mask(const Position* pos) {
     return extend<relative_dir<Us>(SOUTH)>(pos->bitboard_of(~Us, PAWN), 7) & pos->bitboard_of(Us, PAWN);
 }
 
 template<Color Us>
-inline Bitboard weak_lever_mask(Position* pos, Bitboard pawn_attack[2]) {
+inline Bitboard weak_lever_mask(const Position* pos, Bitboard pawn_attack[2]) {
     return (pos->bitboard_of(Us, PAWN) & shift<relative_dir<Us>(SOUTH_WEST)>(pos->bitboard_of(~Us, PAWN)))
      & (pos->bitboard_of(Us, PAWN) & shift<relative_dir<Us>(SOUTH_EAST)>(pos->bitboard_of(~Us, PAWN)))
      & (~pawn_attack[Us]);
@@ -116,7 +116,7 @@ inline Bitboard weak_lever_mask(Position* pos, Bitboard pawn_attack[2]) {
 inline const int connected_seed[8] = {0, 7, 8, 12, 29, 48, 86};
 
 template<Color Us>
-inline int pawn_connected_bonus(Position* pos, bool mg) {
+inline int pawn_connected_bonus(const Position* pos, bool mg) {
     
     Bitboard supported = supported_pawn_mask<Us>(pos);
     Bitboard phalanx = phalanx_pawn_mask<Us>(pos);

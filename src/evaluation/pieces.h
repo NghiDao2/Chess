@@ -38,7 +38,7 @@ const Bitboard BLACK_SQUARE = 0xCCCCCCCCCCCCCCCC;
 const Bitboard WHITE_SQUARE = 0x5555555555555555;
 
 template<Color C>
-inline Bitboard minor_behind_pawn_mask(Position* pos) {
+inline Bitboard minor_behind_pawn_mask(const Position* pos) {
     Bitboard pawn_behind;
 
     pawn_behind = shift<relative_dir<C>(SOUTH)>(pos->bitboard_of(C, PAWN));
@@ -46,7 +46,7 @@ inline Bitboard minor_behind_pawn_mask(Position* pos) {
 }
 
 template<Color C>
-inline int bishop_pawns(Position* pos, Bitboard pawn_attack) {
+inline int bishop_pawns(const Position* pos, Bitboard pawn_attack) {
     Bitboard bishop_bitmap = pos->bitboard_of(C, BISHOP);
     Bitboard pawn_bitboard = pos->bitboard_of(C, PAWN);
 
@@ -69,7 +69,7 @@ inline int bishop_pawns(Position* pos, Bitboard pawn_attack) {
 
 
 template<Color C>
-inline int bishop_xray_pawns(Position* pos, Square sq, PieceType piece_type) {
+inline int bishop_xray_pawns(const Position* pos, Square sq, PieceType piece_type) {
     if (piece_type == BISHOP) {
         return pop_count(BISHOP_ATTACK_MASKS[sq] & pos->bitboard_of(~C, PAWN));
     } 
@@ -77,7 +77,7 @@ inline int bishop_xray_pawns(Position* pos, Square sq, PieceType piece_type) {
 }
 
 template<Color C>
-inline int rook_on_queen_file(Position* pos, Square sq, PieceType piece_type) {
+inline int rook_on_queen_file(const Position* pos, Square sq, PieceType piece_type) {
     if (piece_type == QUEEN) {
         return pop_count(MASK_FILE[file_of(sq)] & pos->bitboard_of(C, ROOK));
     } 
@@ -85,7 +85,7 @@ inline int rook_on_queen_file(Position* pos, Square sq, PieceType piece_type) {
 }
 
 template<Color C>
-inline int rook_on_file(Position* pos, Square sq, PieceType piece_type) {
+inline int rook_on_file(const Position* pos, Square sq, PieceType piece_type) {
     if (piece_type == ROOK) {
         if (pop_count(MASK_FILE[file_of(sq)] & pos->bitboard_of(C, PAWN)) > 0) {
             return 0;
@@ -99,7 +99,7 @@ inline int rook_on_file(Position* pos, Square sq, PieceType piece_type) {
 
 
 template<Color C>
-inline int queen_infiltration(Position* pos, Square sq, PieceType piece_type, Bitboard their_pawn_span) {
+inline int queen_infiltration(const Position* pos, Square sq, PieceType piece_type, Bitboard their_pawn_span) {
     if (piece_type == QUEEN && rank_of(sq) >= RANK5) {
         return ((their_pawn_span >> sq) & 0b1) == 0;
     } 
@@ -107,7 +107,7 @@ inline int queen_infiltration(Position* pos, Square sq, PieceType piece_type, Bi
 }
 
 template<Color C>
-inline int distance_from_king(Position* pos, Square sq) {
+inline int distance_from_king(const Position* pos, Square sq) {
     Bitboard king_bitboard = pos->bitboard_of(C, KING);
     Square king = pop_lsb(&king_bitboard);
 

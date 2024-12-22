@@ -15,8 +15,6 @@ white_player = MonteCarlo(default_eval, config1)
 black_player = MonteCarlo(default_eval)
 
 
-
-
 game = GameSimulator(white_player, black_player)
 game.run(output=True)
 

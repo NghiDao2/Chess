@@ -1,14 +1,113 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
+#include <iostream>
 #include "model.h"
 #include "board.h"
+#include "timer.h"
 #include "monte_carlo.h"
+#include <torch/torch.h>
+
+
+void thread_function(TorchModel& model, int thread_id) {
+    // Get legal moves
+    Board board;
+    std::vector<Move> legal_moves = board.get_legal_moves();
+    std::vector<float> logits(legal_moves.size(), 0);
+
+    for (int j = 0; j < 100; ++j) {
+        // Perform the evaluation
+        float eval = model(board, legal_moves, logits);
+    }
+}
 
 namespace py = pybind11;
 
 void initialize_all() {
     initialise_all_databases();           // Ensure your function is declared and accessible
     zobrist::initialise_zobrist_keys();  // Call Zobrist initialization
+
+
+    try {
+        // Test LayerNorm
+        std::cout << "Testing LayerNorm..." << std::endl;
+        LayerNorm layer_norm(64);
+        torch::Tensor ln_input = torch::randn({8, 64}); // Batch size 8, feature size 64
+        torch::Tensor ln_output = layer_norm.forward(ln_input);
+        std::cout << "LayerNorm output: " << ln_output.sizes() << std::endl;
+
+        // Test SelfAttention
+        std::cout << "\nTesting SelfAttention..." << std::endl;
+        SelfAttention self_attention(64, 8); // 64-dimensional embedding, 8 attention heads
+        torch::Tensor sa_input = torch::randn({8, 16, 64}); // Batch size 8, sequence length 16, embedding size 64
+        torch::Tensor sa_output = self_attention.forward(sa_input);
+        std::cout << "SelfAttention output: " << sa_output.sizes() << std::endl;
+
+        // Test MLP
+        std::cout << "\nTesting MLP..." << std::endl;
+        MLP mlp(64);
+        torch::Tensor mlp_input = torch::randn({8, 64}); // Batch size 8, feature size 64
+        torch::Tensor mlp_output = mlp.forward(mlp_input);
+        std::cout << "MLP output: " << mlp_output.sizes() << std::endl;
+
+        // Test Block
+        std::cout << "\nTesting Block..." << std::endl;
+        Block block(64, 8); // 64-dimensional embedding, 8 attention heads
+        torch::Tensor block_input = torch::randn({8, 16, 64}); // Batch size 8, sequence length 16, embedding size 64
+        torch::Tensor block_output = block.forward(block_input);
+        std::cout << "Block output: " << block_output.sizes() << std::endl;
+
+        // Test ChessModel
+        std::cout << "\nTesting ChessModel..." << std::endl;
+        ChessModel chess_model(4, 8, 64); 
+        torch::Tensor chess_input = torch::randn({8, 8, 64}); 
+        std::vector<torch::Tensor> chess_output = chess_model.forward(chess_input);
+        std::cout << "ChessModel policy output: " << chess_output[0].sizes() << std::endl;
+        std::cout << "ChessModel evaluation output: " << chess_output[1].sizes() << std::endl;
+
+        // Print number of parameters in ChessModel
+        int64_t num_params = chess_model.get_num_params();
+        std::cout << "\nNumber of parameters in ChessModel: " << num_params << std::endl;
+
+
+
+        Board board;
+        
+        std::cout << "Testing TorchModel..." << std::endl;
+
+        ModelConfig conf;
+        conf.n_embed = 64;
+        conf.n_head = 8;
+        conf.n_layer = 4;
+        TorchModel model(conf);
+
+        
+        Timer timer(1000000);
+
+        model.eval_mode();
+
+        const int num_threads = 100;
+        std::vector<std::thread> threads;
+
+        // Launch 10 threads
+        for (int i = 0; i < num_threads; ++i) {
+            threads.emplace_back(thread_function, std::ref(model), i); // Pass model by reference
+        }
+
+        // Join all threads to wait for completion
+        for (std::thread& t : threads) {
+            t.join();
+        }
+
+        std::cout << "Elapsed time for 10,000 evaluations: " 
+              << timer.time_elapsed() << " seconds" << std::endl;
+
+        
+    } catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+    }
+
+
+
 }
 
 
@@ -70,9 +169,11 @@ PYBIND11_MODULE(wrapper, m) {
     // Bind DefaultEvaluation
     py::class_<DefaultEvaluation>(m, "DefaultEvaluation")
         .def(py::init<>())
-        .def("__call__", [](DefaultEvaluation& eval, Board& board, std::vector<Move>& legal_moves, std::vector<float>& logits) {
-            return eval(board, legal_moves, logits);
-        }, "Evaluate the position", py::arg("board"), py::arg("legal_moves"), py::arg("logits"));
+        .def("__call__", [](DefaultEvaluation& eval, Board& board, std::vector<Move>& legal_moves) {
+            std::vector<float> logits = std::vector<float>(legal_moves.size(), 1);
+            auto eval_result = eval(board, legal_moves, logits);
+            py::make_tuple(eval_result, logits);
+        }, "Evaluate the position", py::arg("board"), py::arg("legal_moves"));
 
 
     py::class_<MonteCarloConfig>(m, "MonteCarloConfig")
@@ -94,20 +195,21 @@ PYBIND11_MODULE(wrapper, m) {
 #ifdef HAS_TORCH
     // Bind ModelConfig
     py::class_<ModelConfig>(m, "ModelConfig")
-        .def(py::init<int, int, int, int>(),
-             py::arg("n_layers"), py::arg("embed_dim"), py::arg("hidden_dim"), py::arg("output_dim"))
-        .def_readwrite("n_layers", &ModelConfig::n_layers)
-        .def_readwrite("embed_dim", &ModelConfig::embed_dim)
-        .def_readwrite("hidden_dim", &ModelConfig::hidden_dim)
-        .def_readwrite("output_dim", &ModelConfig::output_dim);
+        .def(py::init<>())
+        .def_readwrite("n_layer", &ModelConfig::n_layer)
+        .def_readwrite("n_head", &ModelConfig::n_head)
+        .def_readwrite("n_embed", &ModelConfig::n_embed)
+        .def_readwrite("dropout", &ModelConfig::dropout)
+        .def_readwrite("bias", &ModelConfig::bias);
 
     // Bind TorchModel
     py::class_<TorchModel>(m, "TorchModel")
         .def(py::init<ModelConfig>(), py::arg("config"))
-         .def("__call__", [](TorchModel& eval, Board& board, std::vector<Move>& legal_moves, std::vector<float>& logits) {
-            return eval(board, legal_moves, logits);
-        }, "Evaluate the position", py::arg("board"), py::arg("legal_moves"), py::arg("logits"));
-
+        .def("__call__", [](TorchModel& eval, Board& board, std::vector<Move>& legal_moves) {
+            std::vector<float> logits = std::vector<float>(legal_moves.size(), 1);
+            auto eval_result = eval(board, legal_moves, logits);
+            py::make_tuple(eval_result, logits);
+        }, "Evaluate the position", py::arg("board"), py::arg("legal_moves"));
 
      // Bind MonteCarlo class instantiated with TorchModel
     py::class_<MonteCarlo<TorchModel>>(m, "MonteCarloTorch")

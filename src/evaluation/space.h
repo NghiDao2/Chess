@@ -10,7 +10,7 @@ const Bitboard space_mask[2] = {
 };
 
 template<Color Us>
-inline int space_total(Position* pos, Bitboard pawn_attack[2]) {
+inline int space_total(const Position* pos, Bitboard pawn_attack[2]) {
 
     Bitboard space_area = space_mask[Us] & (~pos->bitboard_of(Us, PAWN) & (~pawn_attack[~Us]));
     Bitboard additional_space = space_mask[Us] & (extend<relative_dir<Us>(SOUTH)>(pos->bitboard_of(Us, PAWN), 3));

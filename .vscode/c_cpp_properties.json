@@ -4,9 +4,7 @@
             "name": "Linux",
             "includePath": [
                 "${workspaceFolder}/**",
-                "/usr/include/python3.10",
-                "src/libtorch/include",
-                "src/libtorch/include/torch/csrc/api/include",
+                "${workspaceFolder}/src/libtorch/include/torch/csrc/api/include/torch"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/gcc",

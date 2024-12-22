@@ -7,7 +7,7 @@
 
 
 template<Color Us>
-inline int mobility_bonus(Position* pos, Square square, PieceType piece_type, Bitboard mobility_area, bool mg) {
+inline int mobility_bonus(const Position* pos, Square square, PieceType piece_type, Bitboard mobility_area, bool mg) {
 
     if (((pos->pinned >> square) & 0b1) == 1) {
         return 0;

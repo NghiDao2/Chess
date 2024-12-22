@@ -11,16 +11,10 @@
 
 class MonteCarloConfig {
 public:
-    MonteCarloConfig(): 
-        exploration_scale(3.5),
-        exploration_decay(0.25),
-        max_nodes(4194304),
-        max_depth(256) {}
-
-    float exploration_scale;
-    float exploration_decay;
-    int max_nodes;
-    int max_depth;
+    float exploration_scale = 1.05;
+    float exploration_decay = 0.45;
+    int max_nodes = 4194304;
+    int max_depth = 256;
 };
 
 class Node {

@@ -48,11 +48,11 @@ best_decay = 0.25
 scale_std = 0.5
 decay_std = 0.1
 
-NUM_TRIALS = 5
-NUM_BOTS = 8
+NUM_TRIALS = 3
+NUM_BOTS = 3
 NUM_THREADS = 4
-MAX_MOVE_TIME = 500
-MIN_MOVE_TIME = 300
+MAX_MOVE_TIME = 200
+MIN_MOVE_TIME = 100
 
 
 simulator = SimulationBatch(num_threads=NUM_THREADS)
@@ -96,10 +96,10 @@ for trial_n in range(1, NUM_TRIALS + 1, 1):
 
     start_time = time.time()
 
-    while simulation_batch.get_queue_size() > 0:
-        sys.stdout.write(f"\rGames played {total_games - game_queue.qsize()}/{total_games}")
+    while simulator.get_queue_size() > 0:
+        sys.stdout.write(f"\rGames played {total_games - simulator.get_queue_size()}/{total_games}")
         sys.stdout.flush()
-        simulation_batch.wait_finish()
+        simulator.wait_finish()
 
 
     win_amount = [0] * NUM_BOTS

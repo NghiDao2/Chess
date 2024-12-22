@@ -1,6 +1,6 @@
 # Compiler and Flags
 CXX = g++
-CXXFLAGS = -shared -fPIC -std=c++17 -O2 -g
+CXXFLAGS = -shared -fPIC -std=c++17 -O2 -g 
 PYBIND11_CFLAGS := $(shell python3 -m pybind11 --includes)  # Fetch pybind11 flags
 PYTHON_CFLAGS := $(shell python3-config --includes)
 INCLUDES = -I./src/surge/src -I./src/evaluation $(PYBIND11_CFLAGS) $(PYTHON_CFLAGS) -I/usr/include/python3.10
@@ -17,39 +17,29 @@ OBJS := $(SRCS:.cpp=.o)
 # Output Python Module
 TARGET = wrapper.so
 
-# Check if HAS_TORCH is defined in the header file
-ifdef HAS_TORCH
-LIBS = -ltorch -lc10 -ltorch_cpu
+# Check if libtorch exists and set HAS_TORCH
+ifeq ($(shell [ -d "./src/libtorch" ] && echo yes || echo no), yes)
 DEFINES = -DHAS_TORCH
+LIBS = -ltorch -lc10 -ltorch_cpu
 LDFLAGS = -L./src/libtorch/lib -Wl,-rpath=./src/libtorch/lib
 INCLUDES += -I./src/libtorch/include -I./src/libtorch/include/torch/csrc/api/include
 else
-LIBS = $(DEFAULT_LIBS)
 DEFINES = $(DEFAULT_DEFINES)
+LIBS = $(DEFAULT_LIBS)
 LDFLAGS = $(DEFAULT_LDFLAGS)
 endif
 
 # Build the Python Extension Module
 .PHONY: all cpu gpu
-all: check_libtorch cpu  # Default to CPU-only
+all: cpu  # Default to CPU-only
 
 cpu: $(TARGET)
 
-gpu: check_libtorch TORCH_GPU_FLAGS
-	@$(MAKE) $(TARGET)
-
-TORCH_GPU_FLAGS:
+gpu:
 	@echo "Compiling with libtorch GPU support"
 	$(eval LIBS := -ltorch -lc10 -ltorch_cpu -ltorch_gpu)
 	$(eval DEFINES := -DHAS_TORCH)
-
-check_libtorch:
-ifdef HAS_TORCH
-	@if [ ! -d "./src/libtorch" ]; then \
-		echo "Error: ./src/libtorch directory does not exist. Ensure libtorch is installed or remove HAS_TORCH definition."; \
-		exit 1; \
-	fi
-endif
+	@$(MAKE) $(TARGET)
 
 $(TARGET): $(OBJS)
 	$(CXX) $(CXXFLAGS) $(DEFINES) $(OBJS) $(LDFLAGS) $(LIBS) -o $(TARGET)

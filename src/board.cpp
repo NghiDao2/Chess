@@ -52,7 +52,7 @@ vector<Move> Board::get_legal_moves() {
 }
 
 
-string Board::to_string() {
+string Board::to_string() const {
     static thread_local string board_str;  // Ensure thread safety
     ostringstream oss;
     oss << *board;  // Use the operator<<
@@ -60,35 +60,56 @@ string Board::to_string() {
     return board_str.c_str();
 }
 
-uint64_t Board::get_hash() {
+uint64_t Board::get_hash() const {
     return this->board->get_hash();
 }
 
-Piece Board::piece_at(Square s) {
+Piece Board::piece_at(Square s) const {
     return this->board->at(s);
 }
 
-Bitboard Board::piece_bitboard(Piece p) {
+Bitboard Board::piece_bitboard(Piece p) const {
     return this->board->bitboard_of(p);
 }
 
-Color Board::turn() {
+Color Board::turn() const {
     return this->board->turn();
 }
 
-bool Board::is_white_turn() {
+bool Board::is_white_turn() const {
     return this->board->turn() == WHITE;
 }
 
-bool Board::is_repetition() {
+bool Board::is_repetition() const {
     return this->board->is_repetition();
 }
 
-bool Board::is_rule_50() {
+bool Board::is_rule_50() const {
     return this->board->get_rule_50() == 100;
 }
 
-bool Board::is_insufficient() {
+bool Board::can_cstle_king(Color side) const {
+    if (side == WHITE) {
+        return this->board->history[this->board->ply()].entry & WHITE_OO_MASK;
+    }
+     return this->board->history[this->board->ply()].entry & BLACK_OO_MASK;
+}
+
+bool Board::can_cstle_queen(Color side) const {
+    if (side == WHITE) {
+        return this->board->history[this->board->ply()].entry & WHITE_OOO_MASK;
+    }
+     return this->board->history[this->board->ply()].entry & BLACK_OOO_MASK;
+}
+
+Square Board::enpassant_square() const {
+    return this->board->history[this->board->ply()].epsq;
+}
+
+
+
+
+bool Board::is_insufficient() const {
     if (this->board->bitboard_of(WHITE_PAWN) | this->board->bitboard_of(BLACK_PAWN) != 0)
         return false;
     if (this->board->bitboard_of(WHITE_ROOK) | this->board->bitboard_of(BLACK_ROOK) != 0) 
@@ -120,6 +141,15 @@ Board::~Board() {
     delete this->board;
 }
 
-Position* Board::get_position() {
+Position* Board::get_position() const {
     return this->board;
 }
+
+int Board::get_rule_50() const {
+    return this->board->get_rule_50()/2;
+}
+
+int Board::get_repetition() const {
+    return this->board->get_repetition_value();
+}
+
