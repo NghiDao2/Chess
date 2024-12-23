@@ -24,6 +24,7 @@ void* simulator_worker(void* arg) {
         game->run();
 
         pthread_mutex_lock(&batch->lock);
+        batch->processes_remaining--;
         pthread_cond_broadcast(&batch->finished_game);
         pthread_mutex_unlock(&batch->lock);
     }
@@ -54,11 +55,11 @@ SimulatorBatch::SimulatorBatch(int num_processes) {
 
 
 
-int SimulatorBatch::get_queue_size() {
+int SimulatorBatch::total_remaining() {
 
     int size = 0;
     pthread_mutex_lock(&this->lock);
-    size = this->input_queue.size();
+    size = this->processes_remaining;
     pthread_mutex_unlock(&this->lock);
     return size;
 }
@@ -69,6 +70,7 @@ void SimulatorBatch::add(Simulator& game) {
 
    
     pthread_mutex_lock(&this->lock);
+    this->processes_remaining++;
     this->input_queue.push(&game);
     pthread_cond_signal(&this->input_added);
     pthread_mutex_unlock(&this->lock);
@@ -78,11 +80,6 @@ void SimulatorBatch::add(Simulator& game) {
 
 
 SimulatorBatch::~SimulatorBatch() {
-    this->exit_thread();
-}
-
-
-void SimulatorBatch::exit_thread() {
     if (this->thread_exit == false) {
         this->thread_exit = true;
         pthread_cond_broadcast(&this->input_added);
@@ -96,3 +93,4 @@ void SimulatorBatch::exit_thread() {
         pthread_cond_destroy(&this->finished_game);
     }
 }
+

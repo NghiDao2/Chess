@@ -48,8 +48,8 @@ best_decay = 0.25
 scale_std = 0.5
 decay_std = 0.1
 
-NUM_TRIALS = 1
-NUM_BOTS = 4
+NUM_TRIALS = 2
+NUM_BOTS = 2
 NUM_PROCESSES = 4
 MAX_MOVE_TIME = 200
 MIN_MOVE_TIME = 100
@@ -100,10 +100,10 @@ for trial_n in range(1, NUM_TRIALS + 1, 1):
 
     start_time = time.time()
 
-    while simulator.get_queue_size() > 0:
-        sys.stdout.write(f"\rGames played {total_games - simulator.get_queue_size()}/{total_games}")
+    while simulator.total_remaining() > 0:
+        time.sleep(0.2)
+        sys.stdout.write(f"\rGames played {total_games - simulator.total_remaining()}/{total_games}")
         sys.stdout.flush()
-        time.sleep(1)
 
 
     win_amount = [0] * NUM_BOTS
@@ -149,5 +149,3 @@ for trial_n in range(1, NUM_TRIALS + 1, 1):
     decay_std = max(abs(bot_config[best_bot_id].exploration_decay - best_decay), 0.1)
     best_scale = bot_config[best_bot_id].exploration_scale
     best_decay = bot_config[best_bot_id].exploration_decay
-
-simulator.exit_thread()

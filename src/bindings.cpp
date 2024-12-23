@@ -228,8 +228,7 @@ PYBIND11_MODULE(wrapper, m) {
 
     py::class_<SimulatorBatch>(m, "SimulatorBatch")
         .def(py::init<int>(), py::arg("num_processes") = 4) 
-        .def("get_queue_size", &SimulatorBatch::get_queue_size)  
-        .def("exit_thread", &SimulatorBatch::exit_thread)  
+        .def("total_remaining", &SimulatorBatch::total_remaining)  
         .def("add", &SimulatorBatch::add, py::arg("game")); 
 
 
