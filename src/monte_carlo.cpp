@@ -7,11 +7,6 @@
 #include <numeric>
 
 
-template class MonteCarlo<DefaultEvaluation>;
-#ifdef HAS_TORCH
-template class MonteCarlo<TorchModel>;
-#endif
-
 template<typename T>
 inline int random_index(const std::vector<T>& weights) {
     static std::random_device rd;
@@ -59,29 +54,28 @@ void calculateZScores(std::vector<float>& data) {
 
 
 
-
 bool is_white_king_dead(Board& board) { return board.piece_bitboard(WHITE_KING) == 0; }
 bool is_black_king_dead(Board& board) { return board.piece_bitboard(BLACK_KING) == 0; }
-bool is_game_tie(Board& board) { return board.is_insufficient() || board.is_repetition() || board.is_rule_50(); }
+bool is_game_draw(Board& board) { return board.is_insufficient() || board.is_repetition() || board.is_rule_50(); }
 
 
-template <typename Model>
-inline MonteCarlo<Model>::MonteCarlo(Model& m, MonteCarloConfig config) : model(m), nodes_map{} {
+
+
+
+MonteCarlo::MonteCarlo(Model& m, MonteCarloConfig config) : model(m), nodes_map{} {
     this->is_black_win = is_white_king_dead;
     this->is_white_win = is_black_king_dead;
-    this->is_tie = is_game_tie;
+    this->is_draw = is_game_draw;
     this->exploration_scale = config.exploration_scale;
     this->exploration_decay = config.exploration_decay;
     this->max_nodes = config.max_nodes;
     this->max_depth = config.max_depth;
 }
 
-template <typename Model>
-inline MonteCarlo<Model>::MonteCarlo(Model& m) : MonteCarlo(m, MonteCarloConfig()) {}
 
+MonteCarlo::MonteCarlo(Model& m) : MonteCarlo(m, MonteCarloConfig()) {}
 
-template <typename Model>
-inline Node& MonteCarlo<Model>::get_node(Board& board) {
+inline Node& MonteCarlo::get_node(Board& board) {
 
     uint64_t hash = board.get_hash();
 
@@ -94,8 +88,7 @@ inline Node& MonteCarlo<Model>::get_node(Board& board) {
 }
 
 
-template <typename Model>
-inline void MonteCarlo<Model>::roll_out(Board& board, Node& node) {
+inline void MonteCarlo::roll_out(Board& board, Node& node) {
 
     node.legal_moves = board.get_legal_moves();
     node.move_weights = std::vector<float>(node.legal_moves.size(), 1);
@@ -106,7 +99,7 @@ inline void MonteCarlo<Model>::roll_out(Board& board, Node& node) {
     } else if (this->is_black_win(board)) {
         node.evaluation = -1;
         node.game_ended = true;
-    } else if (this->is_tie(board)) {
+    } else if (this->is_draw(board)) {
         node.evaluation = 0;
         node.game_ended = true;
     } else {
@@ -124,8 +117,8 @@ inline void MonteCarlo<Model>::roll_out(Board& board, Node& node) {
 }
 
 
-template <typename Model>
-inline float MonteCarlo<Model>::node_weight(Node& node, int N, bool white_turn, int depth) { //uses modified UCB1
+
+inline float MonteCarlo::node_weight(Node& node, int N, bool white_turn, int depth) { //uses modified UCB1
     if (node.visits == 0) {
         return INFINITY;
     }
@@ -144,8 +137,7 @@ inline float MonteCarlo<Model>::node_weight(Node& node, int N, bool white_turn, 
 
 
 
-template <typename Model>
-inline float MonteCarlo<Model>::visit(Board& board, int depth) {
+inline float MonteCarlo::visit(Board& board, int depth) {
 
     if (depth >= this->max_depth) {
         return 0;
@@ -215,8 +207,8 @@ inline float MonteCarlo<Model>::visit(Board& board, int depth) {
     return eval;
 }
 
-template <typename Model>
-Move MonteCarlo<Model>::search(Board& board, int search_time_ms) {
+
+Move MonteCarlo::search(Board& board, int search_time_ms) {
     
     if (board.get_legal_moves().size() == 0) {
         throw std::invalid_argument("MonteCarlo.search() can not be called for positions with no legal moves");
@@ -224,7 +216,7 @@ Move MonteCarlo<Model>::search(Board& board, int search_time_ms) {
     
     this->iterations_searched = 0;
 
-    if (this->is_tie(board) || this->is_black_win(board) || this->is_white_win(board)) {
+    if (this->is_draw(board) || this->is_black_win(board) || this->is_white_win(board)) {
         return Move();
     }
 
@@ -262,7 +254,7 @@ Move MonteCarlo<Model>::search(Board& board, int search_time_ms) {
 }  
 
 
-template <typename Model>
-int MonteCarlo<Model>::get_iterations_searched() {
+
+int MonteCarlo::get_iterations_searched() {
     return this->iterations_searched;
 }

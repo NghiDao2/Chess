@@ -15,7 +15,13 @@
 
 
 
-class DefaultEvaluation {
+class Model {
+public:
+    virtual float operator()(const Board& board, std::vector<Move>& legal_moves, std::vector<float>& move_weights) = 0; 
+    virtual ~Model() = default;    
+};
+
+class DefaultEvaluation : public Model {
 public:
     float operator()(const Board& board, std::vector<Move>& legal_moves, std::vector<float>& move_weights);
 
@@ -126,14 +132,14 @@ public:
 
 
 
-class TorchModel {
+class TorchModel : public Model {
 public:
     TorchModel(ModelConfig config);
-    float operator()(Board& board, std::vector<Move>& legal_moves, std::vector<float>& move_weights);
+    float operator()(const Board& board, std::vector<Move>& legal_moves, std::vector<float>& move_weights);
     ~TorchModel();
 
     void set_evaluation_batch(int size);
-    void to(const std::string& device_str);\
+    void to(const std::string& device_str);
     void eval_mode();
     void train_mode();
     
@@ -153,9 +159,9 @@ private:
     std::queue<ModelInput*> input_queue;
     ChessModel model;
     pthread_t worker_thread;
-    pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-    pthread_cond_t input_added = PTHREAD_COND_INITIALIZER;
-    pthread_cond_t finished_batch = PTHREAD_COND_INITIALIZER;
+    pthread_mutex_t lock;
+    pthread_cond_t input_added;
+    pthread_cond_t finished_batch;
 
     torch::Device device;
 

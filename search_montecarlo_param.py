@@ -1,6 +1,6 @@
 from wrapper import Move, Board, Piece, initialize_all  # Import classes from wrapper.so
-from wrapper import MonteCarlo, MonteCarloConfig, DefaultEvaluation
-from simulation_batch import SimulationBatch
+from wrapper import MonteCarlo, MonteCarloConfig, DefaultEvaluation, SimulatorBatch, Simulator, SimulatorConfig
+
 
 import time
 import math
@@ -48,14 +48,14 @@ best_decay = 0.25
 scale_std = 0.5
 decay_std = 0.1
 
-NUM_TRIALS = 3
-NUM_BOTS = 3
-NUM_THREADS = 4
+NUM_TRIALS = 1
+NUM_BOTS = 4
+NUM_PROCESSES = 4
 MAX_MOVE_TIME = 200
 MIN_MOVE_TIME = 100
 
 
-simulator = SimulationBatch(num_threads=NUM_THREADS)
+simulator = SimulatorBatch(num_processes=NUM_PROCESSES)
 result_path = create_next_run_folder(path="simulations")
 
 
@@ -85,8 +85,12 @@ for trial_n in range(1, NUM_TRIALS + 1, 1):
             black_bot = MonteCarlo(default_eval, bot_config[black_id])
             move_time = random.randint(MIN_MOVE_TIME, MAX_MOVE_TIME)
             
-            game = simulator.add_game(white_bot, black_bot, move_time=move_time, move_limit=200)
-            games_play[(white_id, black_id)] = game
+            config = SimulatorConfig(white_bot, black_bot)
+            config.move_time = move_time
+            config.move_limit = 200
+            game = Simulator(config)
+            simulator.add(game)
+            games_play[(white_id, black_id)] = [game, white_bot, black_bot]
             total_games += 1
 
 
@@ -99,7 +103,7 @@ for trial_n in range(1, NUM_TRIALS + 1, 1):
     while simulator.get_queue_size() > 0:
         sys.stdout.write(f"\rGames played {total_games - simulator.get_queue_size()}/{total_games}")
         sys.stdout.flush()
-        simulator.wait_finish()
+        time.sleep(1)
 
 
     win_amount = [0] * NUM_BOTS
@@ -111,13 +115,13 @@ for trial_n in range(1, NUM_TRIALS + 1, 1):
             if white_id == black_id:
                 continue
 
-            game = games_play[(white_id, black_id)]
+            game = games_play[(white_id, black_id)][0]
             game.save(run_path, f"Bot_{white_id}_vs_Bot_{black_id}", f"Bot {white_id}", f"Bot {black_id}")
 
-            if game.winner == 1:
+            if game.is_white_win() == 1:
                 win_amount[white_id] += 1
                 lose_amount[black_id] += 1
-            elif game.winner == -1:
+            elif game.is_black_win():
                 win_amount[black_id] += 1
                 lose_amount[white_id] += 1
             else:
@@ -146,4 +150,4 @@ for trial_n in range(1, NUM_TRIALS + 1, 1):
     best_scale = bot_config[best_bot_id].exploration_scale
     best_decay = bot_config[best_bot_id].exploration_decay
 
-simulator.exit()
+simulator.exit_thread()

@@ -5,6 +5,8 @@
 #include "board.h"
 #include "timer.h"
 #include "monte_carlo.h"
+#include "simulator.h"
+#include "simulator_batch.h"
 
 
 void thread_function(TorchModel& model, int thread_id) {
@@ -24,6 +26,9 @@ namespace py = pybind11;
 void initialize_all() {
     initialise_all_databases();           // Ensure your function is declared and accessible
     zobrist::initialise_zobrist_keys();  // Call Zobrist initialization
+/*
+
+
 
 
     try {
@@ -107,6 +112,8 @@ void initialize_all() {
 
 
 
+
+*/
 }
 
 
@@ -165,14 +172,18 @@ PYBIND11_MODULE(wrapper, m) {
         .def("is_insufficient", &Board::is_insufficient)
         .def("is_rule_50", &Board::is_rule_50);
 
-    // Bind DefaultEvaluation
-    py::class_<DefaultEvaluation>(m, "DefaultEvaluation")
-        .def(py::init<>())
+
+    py::class_<Model, std::shared_ptr<Model>>(m, "Model");
+
+    // Register DefaultEvaluation as a subclass of Model with std::shared_ptr as the holder type
+    py::class_<DefaultEvaluation, Model, std::shared_ptr<DefaultEvaluation>>(m, "DefaultEvaluation")
+        .def(py::init<>())  // Default constructor
         .def("__call__", [](DefaultEvaluation& eval, Board& board, std::vector<Move>& legal_moves) {
-            std::vector<float> logits = std::vector<float>(legal_moves.size(), 1);
-            auto eval_result = eval(board, legal_moves, logits);
-            py::make_tuple(eval_result, logits);
-        }, "Evaluate the position", py::arg("board"), py::arg("legal_moves"));
+            std::vector<float> logits(legal_moves.size(), 1.0f);
+            float eval_result = eval(board, legal_moves, logits);
+            return py::make_tuple(eval_result, logits);
+        }, py::arg("board"), py::arg("legal_moves"));
+
 
 
     py::class_<MonteCarloConfig>(m, "MonteCarloConfig")
@@ -182,14 +193,45 @@ PYBIND11_MODULE(wrapper, m) {
         .def_readwrite("max_nodes", &MonteCarloConfig::max_nodes)
         .def_readwrite("max_depth", &MonteCarloConfig::max_depth);
 
+
     // Bind MonteCarlo class instantiated with DefaultEvaluation
-    py::class_<MonteCarlo<DefaultEvaluation>>(m, "MonteCarlo")
-        .def(py::init<DefaultEvaluation&>(), py::arg("model"))
-        .def(py::init<DefaultEvaluation&, MonteCarloConfig&>(), py::arg("model"), py::arg("config"))
-        .def("search", &MonteCarlo<DefaultEvaluation>::search, py::arg("board"), py::arg("search_time_ms"),
+    py::class_<MonteCarlo>(m, "MonteCarlo")
+        .def(py::init<Model&>(), py::arg("model"))
+        .def(py::init<Model&, MonteCarloConfig&>(), py::arg("model"), py::arg("config"))
+        .def("search", &MonteCarlo::search, py::arg("board"), py::arg("search_time_ms"),
              "Perform a Monte Carlo search to determine the best move")
-        .def("get_iterations_searched", &MonteCarlo<DefaultEvaluation>::get_iterations_searched,
+        .def("get_iterations_searched", &MonteCarlo::get_iterations_searched,
              "Get the total number of iterations searched");
+
+
+    py::class_<SimulatorConfig>(m, "SimulatorConfig")
+        .def(py::init<MonteCarlo&, MonteCarlo&>(), py::arg("white_player"), py::arg("black_player"))
+        .def_property_readonly("white_player", &SimulatorConfig::get_white_player)
+        .def_property_readonly("black_player", &SimulatorConfig::get_black_player)
+        .def_readwrite("move_time", &SimulatorConfig::move_time)
+        .def_readwrite("move_limit", &SimulatorConfig::move_limit);
+
+
+    py::class_<Simulator>(m, "Simulator")
+        .def(py::init<SimulatorConfig>(), py::arg("config"))
+        .def("run", &Simulator::run, py::arg("log") = false)
+        .def("save", &Simulator::save, py::arg("path"), py::arg("filename"), 
+        py::arg("white_name") = "Bot", py::arg("black_name") = "Bot")
+        
+        .def("get_time_elapsed", &Simulator::get_time_elapsed)
+        .def("get_total_iterations", &Simulator::get_total_iterations)
+        .def("get_move_sequence", &Simulator::get_move_sequence)
+        .def("is_white_win", &Simulator::is_white_win)
+        .def("is_black_win", &Simulator::is_black_win)
+        .def("is_draw", &Simulator::is_draw);
+
+
+    py::class_<SimulatorBatch>(m, "SimulatorBatch")
+        .def(py::init<int>(), py::arg("num_processes") = 4) 
+        .def("get_queue_size", &SimulatorBatch::get_queue_size)  
+        .def("exit_thread", &SimulatorBatch::exit_thread)  
+        .def("add", &SimulatorBatch::add, py::arg("game")); 
+
 
 #ifdef HAS_TORCH
     // Bind ModelConfig
@@ -202,19 +244,13 @@ PYBIND11_MODULE(wrapper, m) {
         .def_readwrite("bias", &ModelConfig::bias);
 
     // Bind TorchModel
-    py::class_<TorchModel>(m, "TorchModel")
+    py::class_<TorchModel, Model, std::shared_ptr<TorchModel>>(m, "TorchModel")
         .def(py::init<ModelConfig>(), py::arg("config"))
         .def("__call__", [](TorchModel& eval, Board& board, std::vector<Move>& legal_moves) {
-            std::vector<float> logits = std::vector<float>(legal_moves.size(), 1);
-            auto eval_result = eval(board, legal_moves, logits);
-            py::make_tuple(eval_result, logits);
-        }, "Evaluate the position", py::arg("board"), py::arg("legal_moves"));
+            std::vector<float> logits(legal_moves.size(), 1.0f);
+            float eval_result = eval(board, legal_moves, logits);
+            return py::make_tuple(eval_result, logits);
+        }, py::arg("board"), py::arg("legal_moves"));
 
-     // Bind MonteCarlo class instantiated with TorchModel
-    py::class_<MonteCarlo<TorchModel>>(m, "MonteCarloTorch")
-        .def(py::init<TorchModel&>(), py::arg("model"))
-        .def(py::init<TorchModel&, MonteCarloConfig&>(), py::arg("model"), py::arg("config"))
-        .def("search", &MonteCarlo<TorchModel>::search, py::arg("board"), py::arg("search_time_ms"))
-        .def("get_iterations_searched", &MonteCarlo<TorchModel>::get_iterations_searched);
 #endif
 }

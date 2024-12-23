@@ -2,9 +2,9 @@
 
 
 
-Timer::Timer(int ms) : duration(ms), start_time(std::chrono::high_resolution_clock::now()) {};
+Timer::Timer(int64_t ms) : duration(ms), start_time(std::chrono::high_resolution_clock::now()) {};
 
-int Timer::time_remaining() {
+int64_t Timer::time_remaining() {
 
     auto now = std::chrono::high_resolution_clock::now();
     auto rem = duration - std::chrono::duration_cast<std::chrono::milliseconds>(now - this->start_time).count();
@@ -15,7 +15,7 @@ int Timer::time_remaining() {
     return 0;
 }
 
-int Timer::time_elapsed() {
+int64_t Timer::time_elapsed() {
     auto now = std::chrono::high_resolution_clock::now();
     return std::chrono::duration_cast<std::chrono::milliseconds>(now - this->start_time).count();
 }

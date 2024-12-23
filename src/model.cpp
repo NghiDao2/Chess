@@ -136,6 +136,11 @@ model(
     conf.dropout,
     conf.bias
 ) {
+
+    pthread_mutex_init(&this->lock, nullptr);
+    pthread_cond_init(&this->input_added, nullptr);
+    pthread_cond_init(&this->finished_batch, nullptr);
+
     int result = pthread_create(&(this->worker_thread), NULL, &torch_model_worker, this);
     if (result != 0) {
         std::cerr << "Error: pthread_create failed" << std::endl;
@@ -146,7 +151,7 @@ model(
 }
 
 
-float TorchModel::operator()(Board& board, std::vector<Move>& legal_moves, std::vector<float>& move_weights) {
+float TorchModel::operator()(const Board& board, std::vector<Move>& legal_moves, std::vector<float>& move_weights) {
     
     torch::Tensor input_tensor = this->model.board_to_tensor(board);
     ModelInput input(input_tensor);

@@ -6,6 +6,11 @@
 #include <unordered_map>
 #include <functional>
 #include "board.h"
+#include "model.h"
+
+bool is_white_king_dead(Board& board);
+bool is_black_king_dead(Board& board);
+bool is_game_draw(Board& board);
 
 
 
@@ -31,7 +36,6 @@ private:
 };
 
 
-template <typename Model>
 class MonteCarlo {
 
 public:
@@ -41,7 +45,7 @@ public:
     int get_iterations_searched();
     
 private:
-    Model model;
+    Model& model;
     int iterations_searched;
     float exploration_scale; //how strongly the monte carlo chooses exploration over exploitation
     float exploration_decay; //for high depth search, the model should prioritize exploitation over exploration?
@@ -52,7 +56,7 @@ private:
 
     std::function<bool(Board&)> is_black_win;
     std::function<bool(Board&)> is_white_win;
-    std::function<bool(Board&)> is_tie;
+    std::function<bool(Board&)> is_draw;
 
     inline void roll_out(Board& board, Node& node);
     inline Node& get_node(Board& board);
