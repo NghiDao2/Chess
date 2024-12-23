@@ -43,9 +43,9 @@ initialize_all()
 
 default_eval = DefaultEvaluation()
 
-best_scale = 1
-best_decay = 0.25
-scale_std = 0.5
+best_scale = 0.6
+best_decay = 0.22
+scale_std = 0.3
 decay_std = 0.1
 
 NUM_TRIALS = 2
