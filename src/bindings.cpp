@@ -26,7 +26,7 @@ namespace py = pybind11;
 void initialize_all() {
     initialise_all_databases();           // Ensure your function is declared and accessible
     zobrist::initialise_zobrist_keys();  // Call Zobrist initialization
-/*
+
 
 
 
@@ -62,8 +62,8 @@ void initialize_all() {
 
         // Test ChessModel
         std::cout << "\nTesting ChessModel..." << std::endl;
-        ChessModel chess_model(4, 8, 64); 
-        torch::Tensor chess_input = torch::randn({8, 8, 64}); 
+        ChessModel chess_model(4, 1, 1); 
+        torch::Tensor chess_input = torch::randn({8, 8, 1}); 
         std::vector<torch::Tensor> chess_output = chess_model.forward(chess_input);
         std::cout << "ChessModel policy output: " << chess_output[0].sizes() << std::endl;
         std::cout << "ChessModel evaluation output: " << chess_output[1].sizes() << std::endl;
@@ -74,7 +74,33 @@ void initialize_all() {
 
 
 
-        Board board;
+        Board board("rnbqkbnr/pppppppp/8/8/6PP/8/PPPPPP2/RNBQKBNR w KQkq g3 0 1");
+        std::cout << "board 1" << std::endl;
+        torch::Tensor board_tensor = chess_model.board_to_tensor(board);
+
+        for (int y = 0; y < 8; y++) {
+            for (int x = 0; x < 8; x++) {
+                std::cout << board_tensor[y*8+x].item<float>() << " | ";
+            }
+            std::cout << std::endl;
+        }
+
+
+        Board board2("rnbqkbnr/pppppp2/8/6pp/8/8/PPPPPPPP/RNBQKBNR b KQkq e3 0 1");
+        std::cout << "board 1" << std::endl;
+        torch::Tensor board_tensor2 = chess_model.board_to_tensor(board2);
+
+        for (int y = 0; y < 8; y++) {
+            for (int x = 0; x < 8; x++) {
+                std::cout << board_tensor2[y*8+x].item<float>() << " | ";
+            }
+            std::cout << std::endl;
+        }
+
+
+
+
+        /*
         
         std::cout << "Testing TorchModel..." << std::endl;
 
@@ -104,6 +130,8 @@ void initialize_all() {
 
         std::cout << "Elapsed time for 10,000 evaluations: " 
               << timer.time_elapsed() << " seconds" << std::endl;
+        
+        */
 
         
     } catch (const std::exception& e) {
@@ -113,7 +141,7 @@ void initialize_all() {
 
 
 
-*/
+
 }
 
 

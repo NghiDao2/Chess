@@ -87,7 +87,7 @@ public:
     /*
     //returns a tensor representing the input relative to the side making the move
     */
-    torch::Tensor board_to_tensor(const Board& board);
+    torch::Tensor board_to_tensor(const Board& board, const torch::Device device = torch::kCPU);
     int64_t get_num_params() const;
 
 private:
@@ -143,7 +143,10 @@ public:
     void eval_mode();
     void train_mode();
     
-    std::vector<torch::Tensor> calculate_loss(vector<vector<Move>> games, int batch_size);
+    std::vector<torch::Tensor> calculate_loss(
+        std::vector<std::vector<Move>> white_wins, 
+        std::vector<std::vector<Move>> black_wins,
+        int batch_size);
 
     friend void* torch_model_worker(void* arg);
     friend void accumulate_gradient(TorchModel main_model, std::vector<TorchModel> models);

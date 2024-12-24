@@ -40,7 +40,9 @@ class SelfAttention(nn.Module):
         q = q.view(B, T, self.n_head, C // self.n_head).transpose(1, 2) # (n_batch, num heads, n_seq, head size)
         v = v.view(B, T, self.n_head, C // self.n_head).transpose(1, 2) # (n_batch, num heads, n_seq, head size)
 
-        output = torch.nn.functional.scaled_dot_product_attention(q, k, v, attn_mask=None, dropout_p=self.dropout if self.training else 0, is_causal=True)
+        output = torch.nn.functional.scaled_dot_product_attention(
+            q, k, v, attn_mask=None, dropout_p=self.dropout if self.training else 0.0, is_causal=True
+        )
         
         output = output.transpose(1, 2).contiguous().view(B, T, C) # re-assemble all head outputs side by side
         output = self.projection(output)
@@ -81,58 +83,54 @@ class Block(nn.Module):
         return x
 
 
-@dataclass
 class ChessModelConfig:
-    n_layer: int = 12
-    n_head: int = 12
-    n_embd: int = 768
+    n_layer: int = 6
+    n_head: int = 8
+    n_embed: int = 64
     dropout: float = 0.0
     bias: bool = False # True: bias in Linears and LayerNorms.
 
 class ChessModel(nn.Module):
-
-    def __init__(self, config):
+    def __init__(self, config : ChessModelConfig):
         super().__init__()
-        
-        self.config = config
-        self.piece_embedding = nn.Embedding(16, n_embed) # there are 12 chess pieces
-        # 0 - 5 = white pawn, knight, bishop, rook, queen, king respectively
-        # 8 - 13 = black pawn, knight, bishop, rook, queen, king respecively
-        # empty square is 14, and should be set to 0
+        self.n_layer = config.n_layer
+        self.n_head = config.n_head
+        self.n_embed = config.n_embed
+        self.dropout = config.dropout
+        self.bias = config.bias
 
-        self.piece_embedding = nn.Embedding(8, config.n_embed)
-        self.position_embedding = nn.Embedding(64, config.n_embed)
-        self.castling_embedding = nn.Embedding(4, config.n_embed)
-        self.enpassant = nn.Embedding(config.n_embed)
+        # Embedding layers
+        self.piece_embed = nn.Embedding(16, self.n_embed)
+        self.position_embed = nn.Embedding(64, self.n_embed)
+        self.castling_embed = nn.Embedding(4, self.n_embed)
+        self.enpassant_embed = nn.Embedding(1, self.n_embed)
+        self.repetition_embed = nn.Embedding(3, self.n_embed)
+        self.rule50_embed = nn.Embedding(50, self.n_embed)
 
-        
-        self.blocks = nn.ModuleList([Block(n_embed, n_head, dropout, bias) for _ in range(n_layer)])
-        self.layer_norm = LayerNorm(n_embed, bias)
-    
-        self.pooling = nn.AdaptiveMaxPool1d(1)  # Adaptive pooling to size 1
-        self.policy = nn.Linear(n_embed, 1882) 
-        self.evaluation = nn.Linear(n_embed, 1)  
-        
+        with torch.no_grad():
+            self.piece_embed.weight[torch.tensor([6, 7, 14, 15])] = 0
+        self.piece_embed.weight.requires_grad = True 
 
-        print("Number of parameters: %.2fM" % (self.get_num_params()/1e6,))
+        self.blocks = nn.ModuleList([Block(self.n_embed, self.n_head, self.dropout, self.bias) for _ in range(self.n_layer)])
+        self.layer_norm = LayerNorm(self.n_embed, self.bias)
+        self.policy = nn.Linear(self.n_embed, 1882, bias=self.bias)
+        self.evaluation = nn.Linear(self.n_embed, 1, bias=self.bias)
+
+
 
     def forward(self, x): # assumes this input is already in the correct format
         
         for block in self.blocks:
             x = block(x)
             
-        x = self.layer_norm(x)
-
-        
+        x = self.layer_norm(x) 
         x = x.transpose(1, 2)  # Change to [batch_size, n_emb, ith chess piece]
-        x = self.mean(x)  # Mean to [batch_size, n_emb, 1] compress all the representation into a single one
+        x = torch.mean(x, dim=-1)  # Mean to [batch_size, n_emb, 1] compress all the representation into a single one
         x = x.squeeze(-1)  # Remove last dimension [batch_size, n_emb]
-        
         move_logits = self.policy(x)
         evaluation = self.evaluation(x)
 
-
-        return [move_logits, evaluation]
+        return [evaluation, move_logits]
 
 
     def get_num_params(self):

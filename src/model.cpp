@@ -186,6 +186,21 @@ float TorchModel::operator()(const Board& board, std::vector<Move>& legal_moves,
 }
 
 
+std::vector<torch::Tensor> TorchModel::calculate_loss(
+        std::vector<std::vector<Move>> white_wins, 
+        std::vector<std::vector<Move>> black_wins,
+        int batch_size) 
+{
+
+//at::autocast_mode::AutocastMode autocast(this->device, torch::kBFloat16);
+
+    vector<torch::Tensor> inputs;
+    vector<torch::Tensor> expected_evals;
+    vector<torch::Tensor> expected_logits;
+
+}
+
+
 TorchModel::~TorchModel() {
     this->thread_exit = true;
     pthread_cond_broadcast(&this->input_added);
@@ -304,13 +319,11 @@ ChessModel::ChessModel(int64_t n_layer, int64_t n_head, int64_t n_embed, float d
     this->repetition_embed = register_module("repetition_embed", torch::nn::Embedding(torch::nn::EmbeddingOptions(3, n_embed)));
     this->rule50_embed = register_module("rule50_embed", torch::nn::Embedding(torch::nn::EmbeddingOptions(50, n_embed)));
 
-    // Set the embedding for indices 6, 7, 14, 15 to zero
-    auto weights = this->piece_embed->weight; // Access the embedding weights
-    weights.index({torch::tensor({6, 7, 14, 15})}).zero_(); // Set specified rows to zero
+    // Set the embedding for indices 6, 7, 14, 15 to zero (not valid pieces)
+    auto weights = this->piece_embed->weight;
+    this->piece_embed->weight.data().index_put_({torch::tensor({6, 7, 14, 15})}, torch::zeros({n_embed}));
+    this->piece_embed->weight.data().index({torch::tensor({6, 7, 14, 15})}).requires_grad_(false);
 
-    // Detach the tensor and set requires_grad_ = false
-    auto detached_weights = weights.index({torch::tensor({6, 7, 14, 15})}).detach();
-    detached_weights.requires_grad_(false);
 
     for (int64_t i = 0; i < n_layer; ++i) {
         blocks.push_back(register_module("block_" + std::to_string(i), std::make_shared<Block>(n_embed, n_head, dropout, bias)));
@@ -339,30 +352,36 @@ std::vector<torch::Tensor> ChessModel::forward(const torch::Tensor& x) {
     return result;
 }
 
-torch::Tensor ChessModel::board_to_tensor(const Board& board) {
+
+int relative_square(int sq, Color Us) {
+    if (Us == WHITE) {
+        return create_square(file_of(Square(sq)), relative_rank<WHITE>(rank_of(Square(sq))));
+    } else {
+        return create_square(file_of(Square(sq)), relative_rank<BLACK>(rank_of(Square(sq))));
+    }
+}
+
+torch::Tensor ChessModel::board_to_tensor(const Board& board, const torch::Device device) {
     // Initialize a tensor to store the resulting embedding for each square
     auto tensor = torch::zeros({64, this->n_embed}, torch::kFloat32);
 
     Color Us = board.turn();
 
-    for (int sq = 0; sq < 64; ++sq) {
+    for (int index = 0; index < 64; ++index) {
 
-        int square;
-
-        if (Us == WHITE) {
-            square = create_square(file_of(Square(sq)), relative_rank<WHITE>(rank_of(Square(sq))));
-        } else {
-            square = create_square(file_of(Square(sq)), relative_rank<BLACK>(rank_of(Square(sq))));
-        }
+        int square = relative_square(index, Us);
 
         int piece_idx = board.piece_at(Square(square));
+        if (piece_idx != NO_PIECE) {
+            piece_idx ^= (Us << 3);
+        }
         auto piece_emb =    this->piece_embed->forward(torch::tensor(piece_idx, torch::kLong));
-        auto position_emb = this->position_embed->forward(torch::tensor(square, torch::kLong));
+        auto position_emb = this->position_embed->forward(torch::tensor(index, torch::kLong));
         auto r50_emb =      this->rule50_embed->forward(torch::tensor(std::clamp(board.get_rule_50(), 0, 49), torch::kLong));
         auto repe_emb =     this->repetition_embed->forward(torch::tensor(std::clamp(board.get_repetition()-1, 0, 2), torch::kLong));
 
         // Add the embeddings (piece + position) and store them in the tensor
-        tensor.index_put_({square}, piece_emb + position_emb + r50_emb + repe_emb);
+        tensor.index_put_({index}, piece_idx);// + position_emb + r50_emb + repe_emb);
 
         // If the current piece is a king, handle castling rights
         if (type_of(Piece(piece_idx)) == KING) {
@@ -393,6 +412,7 @@ torch::Tensor ChessModel::board_to_tensor(const Board& board) {
     // Add en passant embedding if applicable
     int enpassant_sq = int(board.enpassant_square());
     if (enpassant_sq != NO_SQUARE) {
+        enpassant_sq = relative_square(enpassant_sq, Us);
         auto emb = this->enpassant_embed->forward(torch::tensor(0, torch::kLong));
         tensor.index_put_({enpassant_sq}, tensor.index({enpassant_sq}) + emb);
     }
